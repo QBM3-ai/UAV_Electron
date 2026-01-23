@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UAV Server Admin</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; }
+        .btn { padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; color: white; margin-right: 5px; }
+        .btn-del { background-color: #dc3545; }
+        .btn-reset { background-color: #ffc107; color: black; }
+        .login-box { text-align: center; margin-top: 50px; }
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div id="login-view" class="container login-box">
+    <h2>Admin Login</h2>
+    <input type="password" id="admin-token" placeholder="Enter Admin Token">
+    <button class="btn" style="background-color: #007bff;" onclick="login()">Access Panel</button>
+</div>
+
+<div id="dashboard-view" class="container" style="display: none;">
+    <h1>User Management</h1>
+    
+    <div style="margin-bottom: 20px; padding: 15px; background: #e9ecef; border-radius: 5px;">
+        <h3>🚀 Publish Update</h3>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <input type="text" id="upd-version" placeholder="Version (e.g. 1.0.2)" style="width: 150px;">
+            <input type="text" id="upd-notes" placeholder="Release Notes" style="flex: 1;">
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="file" id="upd-file" accept=".exe">
+            <button class="btn" style="background-color: #6610f2;" onclick="publishUpdate()">Upload & Publish</button>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div id="progress-container" style="display: none; margin-top: 15px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px;">
+                <span>Uploading...</span>
+                <span id="progress-text">0%</span>
+            </div>
+            <div style="width: 100%; background: #ccc; height: 10px; border-radius: 5px; overflow: hidden;">
+                <div id="progress-bar" style="width: 0%; background: #28a745; height: 100%; transition: width 0.1s;"></div>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn" style="background-color: #28a745;" onclick="loadUsers()">Refresh List</button>
+    <button class="btn" style="background-color: #6c757d;" onclick="logout()">Logout</button>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Account / Email</th>
+                <th>Created At</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="user-list">
+            <!-- Users will be loaded here -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const API_URL = '/api/admin';
+    let token = localStorage.getItem('admin_token');
+
+    if (token) {
+        showDashboard();
+    }
+
+    function login() {
+        const input = document.getElementById('admin-token').value;
+        if (input) {
+            token = input;
+            localStorage.setItem('admin_token', token);
+            showDashboard();
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('admin_token');
+        location.reload();
+    }
+
+    function showDashboard() {
+        document.getElementById('login-view').style.display = 'none';
+        document.getElementById('dashboard-view').style.display = 'block';
+        loadUsers();
+    }
+
+    async function loadUsers() {
+        if (!token) {
+            alert("No token found. Please login.");
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_URL}/users`, {
+                headers: { 'admin-token': token }
+            });
+            
+            // Check HTML response (e.g. 404 page)
+            const contentType = res.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                const text = await res.text();
+                throw new Error(`Server returned execution error (Not JSON). Status: ${res.status} ${res.statusText}. \nContent: ${text.substring(0, 50)}...`);
+            }
+
+            const data = await res.json();
+            
+            if (!data.success) {
+                alert('Access Denied: ' + (data.message || 'Invalid Token'));
+                logout();
+                return;
+            }
+
+            const tbody = document.getElementById('user-list');
+            tbody.innerHTML = '';
+            
+            data.data.forEach(user => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${user.id}</td>
+                    <td>${user.account}</td>
+                    <td>${user.created_at}</td>
+                    <td>
+                        <button class="btn btn-reset" onclick="resetPass(${user.id})">Reset Pass</button>
+                        <button class="btn btn-del" onclick="deleteUser(${user.id})">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            console.error(e);
+            alert('Error loading users: ' + (e.message || e));
+        }
+    }
+
+    async function deleteUser(id) {
+        if(!confirm('Are you sure you want to delete user ' + id + '?')) return;
+        
+        await fetch(`${API_URL}/users/${id}`, {
+            method: 'DELETE',
+            headers: { 'admin-token': token }
+        });
+        loadUsers();
+    }
+    
+    async function resetPass(id) {
+        if(!confirm('Reset password to "123456" for user ' + id + '?')) return;
+        
+        await fetch(`${API_URL}/users/${id}/reset-password`, {
+            method: 'POST',
+            headers: { 'admin-token': token }
+        });
+        alert('Password has been reset to 123456');
+    }
+
+    async function publishUpdate() {
+        const ver = document.getElementById('upd-version').value;
+        const notes = document.getElementById('upd-notes').value;
+        const fileInput = document.getElementById('upd-file');
+        
+        if (!ver || !fileInput.files[0]) {
+            alert('Please provide version and select a file.');
+            return;
+        }
+
+        if(!confirm(`Publish version ${ver}? This will overwrite the latest installer.`)) return;
+
+        const formData = new FormData();
+        formData.append('version', ver);
+        formData.append('notes', notes);
+        formData.append('file', fileInput.files[0]);
+
+        const btn = document.querySelector('button[onclick="publishUpdate()"]');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const progressContainer = document.getElementById('progress-container');
+        
+        btn.disabled = true;
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressText.innerText = '0%';
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/admin/publish-update', true);
+        xhr.setRequestHeader('admin-token', token);
+
+        // Upload Progress
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percent + '%';
+                progressText.innerText = percent + '%';
+            }
+        };
+
+        xhr.onload = function() {
+            btn.disabled = false;
+            // Keep progress bar visible for a moment if success, or hide immediately
+            if (xhr.status === 200) {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.success) {
+                        progressBar.style.width = '100%';
+                        progressText.innerText = '100%';
+                        setTimeout(() => {
+                            alert('Update Published Successfully!');
+                            progressContainer.style.display = 'none';
+                            document.getElementById('upd-version').value = '';
+                            document.getElementById('upd-notes').value = '';
+                            fileInput.value = '';
+                        }, 500);
+                    } else {
+                        progressContainer.style.display = 'none';
+                        alert('Failed: ' + data.message);
+                    }
+                } catch (e) {
+                    progressContainer.style.display = 'none';
+                    alert('Invalid response from server');
+                }
+            } else {
+                progressContainer.style.display = 'none';
+                alert('Upload failed: ' + xhr.statusText);
+            }
+        };
+
+        xhr.onerror = function() {
+            btn.disabled = false;
+            progressContainer.style.display = 'none';
+            alert('Error during upload connection');
+        };
+
+        xhr.send(formData);
+    }
+</script>
+
+</body>
+</html>
