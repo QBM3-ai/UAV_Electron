@@ -1,0 +1,404 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    font-family: 'Segoe UI', sans-serif;
+    color: white;
+    background-color: #1e1e1e;
+    overflow: hidden;
+}
+
+#app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Navigation Bar */
+#nav-bar {
+    height: 40px;
+    background-color: #2d2d2d;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    border-bottom: 1px solid #3e3e3e;
+}
+
+.nav-btn {
+    background: transparent;
+    border: none;
+    color: #ccc;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.nav-btn:hover {
+    color: white;
+    background-color: #3e3e3e;
+}
+
+.nav-btn.active {
+    color: #fff;
+    border-bottom: 2px solid #007acc;
+}
+
+/* Auth Buttons in Navbar */
+.auth-container {
+    margin-left: auto; /* Push to right */
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding-right: 10px;
+}
+
+.auth-btn {
+    cursor: pointer;
+    font-size: 14px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: none;
+    transition: background-color 0.2s;
+    font-family: inherit;
+}
+
+/* Transparent background, white text */
+.auth-btn-register {
+    background-color: transparent;
+    color: white;
+}
+
+.auth-btn-register:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Generic Blue Button */
+.auth-btn-login {
+    background-color: #007acc;
+    color: white;
+    font-weight: bold;
+}
+
+.auth-btn-login:hover {
+    background-color: #0062a3;
+}
+
+/* Pages */
+.page {
+    display: none;
+    flex: 1;
+    width: 100%;
+    height: calc(100% - 40px);
+}
+
+.page.active {
+    display: flex; /* Changed from grid for splitter layout */
+    flex-direction: column;
+}
+
+/* Home Page Layout */
+#page-home {
+    background-color: #121212;
+    overflow: hidden;
+}
+
+.pane {
+    background-color: #252526;
+    border: 1px solid #3e3e3e;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#pane-upper {
+    flex: 1; /* Takes remaining space */
+    min-height: 200px;
+}
+
+#pane-lower {
+    height: 300px; /* Initial height */
+    min-height: 100px;
+}
+
+#resizer {
+    height: 5px;
+    background-color: #3e3e3e;
+    cursor: ns-resize;
+    transition: background-color 0.2s;
+}
+
+#resizer:hover {
+    background-color: #007acc;
+}
+
+/* Common Pane Styles */
+.pane-header {
+    background-color: #333333;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pane-content {
+    flex: 1;
+    padding: 10px;
+    position: relative;
+}
+
+/* Toolbar in Upper Pane */
+.overlay-toolbar {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+    background: rgba(0,0,0,0.6);
+    padding: 5px;
+    border-radius: 4px;
+    pointer-events: auto;
+    display: flex;
+    gap: 10px;
+}
+
+.overlay-toolbar-right {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    background: rgba(0,0,0,0.6);
+    padding: 5px;
+    border-radius: 4px;
+    pointer-events: auto;
+    display: flex;
+    gap: 10px;
+}
+
+#video-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+}
+
+
+/* Controls */
+.pane-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn-icon:hover {
+    color: white;
+}
+
+.btn-float {
+    background-color: #007acc;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-float:hover {
+    background-color: #0062a3;
+}
+
+/* 3D Modeling Page */
+#page-modeling {
+    padding: 20px;
+    display: none; /* Flex when active */
+    flex-direction: column;
+}
+
+.modeling-status {
+    background: #252526;
+    padding: 20px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.modeling-viewer {
+    flex: 1;
+    background: #000;
+    border: 1px solid #3e3e3e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+}
+
+/* Data Grid */
+.data-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 10px;
+    width: 100%;
+    padding: 10px;
+}
+
+.data-item {
+    background: #333;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.data-label {
+    font-size: 10px;
+    color: #aaa;
+}
+
+.data-value {
+    font-size: 18px;
+    font-weight: bold;
+    color: #4ec9b0;
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: #007acc;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 2px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.btn-primary:active {
+    background-color: #005a9e;
+}
+
+/* Toast Notification */
+.toast-notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-size: 16px;
+    z-index: 20000;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+    text-align: center;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.toast-notification.show {
+    opacity: 1;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    display: none; /* Hidden by default */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-overlay.show {
+    display: flex;
+}
+
+.modal-box {
+    position: relative; /* For absolute positioning of close button */
+    background-color: #252526;
+    padding: 30px;
+    border-radius: 8px;
+    width: 320px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    border: 1px solid #3e3e3e;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 24px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+}
+
+.modal-close-btn:hover {
+    color: white;
+}
+
+.modal-title {
+    color: white;
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 20px;
+}
+
+.input-group {
+    margin-bottom: 15px;
+}
+
+.modal-input {
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box; /* Ensure padding doesn't affect width */
+    background-color: #1e1e1e;
+    border: 1px solid #3e3e3e;
+    border-radius: 4px;
+    color: white;
+    font-size: 14px;
+}
+
+.modal-input:focus {
+    outline: none;
+    border-color: #007acc;
+}
+
+.modal-footer {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.text-link {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+}
+
+.text-link:hover {
+    text-decoration: underline;
+    color: white;
+}

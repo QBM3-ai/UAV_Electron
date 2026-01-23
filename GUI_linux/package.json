@@ -1,0 +1,49 @@
+{
+  "name": "uav-control-platform",
+  "version": "1.0.3",
+  "description": "Unified control platform for UAV 3D modeling and monitoring",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.uav.control",
+    "productName": "UAV Control Platform",
+    "directories": {
+      "output": "dist_linux"
+    },
+    "files": [
+      "src/**/*",
+      "sim_stream_server.js",
+      "package.json",
+      "1.mp4"
+    ],
+    "linux": {
+      "target": "tar.gz",
+      "icon": "icon.png",
+      "category": "Science"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "UAV Control"
+    }
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^39.2.7",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "node-rtsp-stream": "^0.0.9",
+    "ws": "^8.19.0"
+  }
+}

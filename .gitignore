@@ -1,2 +1,4 @@
 GUI/node_modules
 Backend/node_modules
+GUI_linux/node_modules
+GUI_linux/dist_linux
