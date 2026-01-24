@@ -1,0 +1,239 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    font-family: 'Segoe UI', sans-serif;
+    color: white;
+    background-color: #1e1e1e;
+    overflow: hidden;
+}
+
+#app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Navigation Bar */
+#nav-bar {
+    height: 40px;
+    background-color: #2d2d2d;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    border-bottom: 1px solid #3e3e3e;
+}
+
+.nav-btn {
+    background: transparent;
+    border: none;
+    color: #ccc;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.nav-btn:hover {
+    color: white;
+    background-color: #3e3e3e;
+}
+
+.nav-btn.active {
+    color: #fff;
+    border-bottom: 2px solid #007acc;
+}
+
+/* Pages */
+.page {
+    display: none;
+    flex: 1;
+    width: 100%;
+    height: calc(100% - 40px);
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.page.active {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Page 1: Monitor Grid */
+.grid-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 15px;
+    flex: 1;
+    min-height: 0;
+}
+
+.video-panel {
+    background-color: #2d2d2d;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    position: relative;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.channel-label {
+    font-weight: bold;
+    color: #4CAF50;
+    min-width: 40px;
+}
+
+input.rtsp-input {
+    flex: 1;
+    padding: 5px 8px;
+    background-color: #3d3d3d;
+    border: 1px solid #555;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.controls {
+    display: flex;
+    gap: 5px;
+}
+
+button {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background-color 0.2s;
+    color: white;
+    font-family: inherit;
+}
+
+button.btn-connect {
+    background-color: #2196F3;
+}
+button.btn-connect:hover { background-color: #1976D2; }
+button.btn-connect.connected { background-color: #F44336; }
+
+button.btn-capture {
+    background-color: #FF9800;
+}
+button.btn-capture:hover { background-color: #F57C00; }
+button.btn-capture.capturing { background-color: #F44336; animation: pulse 1s infinite; }
+
+.canvas-container {
+    flex: 1;
+    background-color: #000;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.status-overlay {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(0,0,0,0.6);
+    padding: 3px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    pointer-events: none;
+    z-index: 10;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+/* Page 2: Settings & Server */
+.settings-section {
+    background-color: #2d2d2d;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+h2 {
+    margin-top: 0;
+    color: #007acc;
+    border-bottom: 1px solid #3e3e3e;
+    padding-bottom: 10px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #aaa;
+}
+
+.form-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+input[type="text"] {
+    flex: 1;
+    padding: 8px;
+    background-color: #3d3d3d;
+    border: 1px solid #555;
+    color: white;
+    border-radius: 4px;
+}
+
+button.btn-primary {
+    background-color: #007acc;
+}
+button.btn-primary:hover { background-color: #0062a3; }
+
+.channel-selector {
+    display: flex;
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+.checkbox-group input {
+    cursor: pointer;
+}
+
+/* Status logs or info */
+#server-status {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #aaa;
+}
+#server-status.connected { color: #4CAF50; }
+#server-status.error { color: #F44336; }
+
+section { margin-bottom: 30px; }

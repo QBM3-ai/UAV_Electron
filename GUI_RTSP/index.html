@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Multi-Channel RTSP Monitor</title>
+    <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+    <div id="app-container">
+        <!-- Navigation -->
+        <div id="nav-bar">
+            <button class="nav-btn active" data-target="page-monitor">图传监看</button>
+            <button class="nav-btn" data-target="page-settings">服务器与设置</button>
+        </div>
+
+        <!-- Page 1: Monitor -->
+        <div id="page-monitor" class="page active">
+            <div class="grid-container">
+                <!-- Channel 1 -->
+                <div class="video-panel" id="panel-1">
+                    <div class="panel-header">
+                        <span class="channel-label">CH 1</span>
+                        <input type="text" class="rtsp-input" id="rtsp-1" value="rtsp://192.168.1.101:554/stream">
+                        <div class="controls">
+                            <button class="btn-connect" onclick="toggleConnect(1)">连接</button>
+                            <button class="btn-capture" onclick="toggleCapture(1)">捕获</button>
+                        </div>
+                    </div>
+                    <div class="canvas-container" id="container-1">
+                        <div class="status-overlay" id="status-1">Disconnected</div>
+                    </div>
+                </div>
+
+                <!-- Channel 2 -->
+                <div class="video-panel" id="panel-2">
+                    <div class="panel-header">
+                        <span class="channel-label">CH 2</span>
+                        <input type="text" class="rtsp-input" id="rtsp-2" value="rtsp://192.168.1.102:554/stream">
+                        <div class="controls">
+                            <button class="btn-connect" onclick="toggleConnect(2)">连接</button>
+                            <button class="btn-capture" onclick="toggleCapture(2)">捕获</button>
+                        </div>
+                    </div>
+                    <div class="canvas-container" id="container-2">
+                        <div class="status-overlay" id="status-2">Disconnected</div>
+                    </div>
+                </div>
+
+                <!-- Channel 3 -->
+                <div class="video-panel" id="panel-3">
+                    <div class="panel-header">
+                        <span class="channel-label">CH 3</span>
+                        <input type="text" class="rtsp-input" id="rtsp-3" value="rtsp://192.168.1.103:554/stream">
+                        <div class="controls">
+                            <button class="btn-connect" onclick="toggleConnect(3)">连接</button>
+                            <button class="btn-capture" onclick="toggleCapture(3)">捕获</button>
+                        </div>
+                    </div>
+                    <div class="canvas-container" id="container-3">
+                        <div class="status-overlay" id="status-3">Disconnected</div>
+                    </div>
+                </div>
+
+                <!-- Channel 4 -->
+                <div class="video-panel" id="panel-4">
+                    <div class="panel-header">
+                        <span class="channel-label">CH 4</span>
+                        <input type="text" class="rtsp-input" id="rtsp-4" value="rtsp://192.168.1.104:554/stream">
+                        <div class="controls">
+                            <button class="btn-connect" onclick="toggleConnect(4)">连接</button>
+                            <button class="btn-capture" onclick="toggleCapture(4)">捕获</button>
+                        </div>
+                    </div>
+                    <div class="canvas-container" id="container-4">
+                        <div class="status-overlay" id="status-4">Disconnected</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page 2: Settings & Server -->
+        <div id="page-settings" class="page">
+            <div style="max-width: 800px; margin: 0 auto; width: 100%;">
+                
+                <!-- Section: Capture Settings -->
+                <section class="settings-section">
+                    <h2>本地捕获设置</h2>
+                    <div class="form-group">
+                        <label>数据保存路径 (Capture Path)</label>
+                        <div class="form-row">
+                            <input type="text" id="capture-path" readonly placeholder="请选择保存路径...">
+                            <button class="btn-primary" onclick="selectFolder()">选择文件夹</button>
+                        </div>
+                        <p style="color: #666; font-size: 12px; margin-top: 5px;">
+                            将在该目录下创建 "CH1" - "CH4" 文件夹。每次捕获将在对应通道内创建时间戳文件夹。
+                        </p>
+                    </div>
+                </section>
+
+                <!-- Section: Server Upload -->
+                <section class="settings-section">
+                    <h2>服务器连接与上传</h2>
+                    <div class="form-group">
+                        <label>服务器上传地址 (Server Upload URL)</label>
+                        <div class="form-row">
+                            <input type="text" id="server-url" value="http://localhost:3000/upload" placeholder="http://ip:port/api/upload">
+                            <button class="btn-primary" id="btn-server-connect" onclick="toggleServerConnect()">连接服务器</button>
+                        </div>
+                        <div id="server-status">未连接</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>选择上传数据的通道 (Select Channels to Upload)</label>
+                        <div class="channel-selector">
+                            <label class="checkbox-group">
+                                <input type="checkbox" id="upload-ch1" checked> CH 1
+                            </label>
+                            <label class="checkbox-group">
+                                <input type="checkbox" id="upload-ch2" checked> CH 2
+                            </label>
+                            <label class="checkbox-group">
+                                <input type="checkbox" id="upload-ch3" checked> CH 3
+                            </label>
+                            <label class="checkbox-group">
+                                <input type="checkbox" id="upload-ch4" checked> CH 4
+                            </label>
+                        </div>
+                        <p style="color: #666; font-size: 12px; margin-top: 5px;">
+                            只有勾选的通道且正在进行"捕获"时才会上传数据。
+                        </p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="src/jsmpeg.min.js"></script>
+    <script src="src/renderer.js"></script>
+</body>
+</html>
