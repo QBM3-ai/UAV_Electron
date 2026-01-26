@@ -10,6 +10,11 @@
   "build": {
     "appId": "com.rtspmonitor.app",
     "productName": "RTSP Monitor",
+    "files": [
+      "**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
     "directories": {
       "output": "dist"
     },
