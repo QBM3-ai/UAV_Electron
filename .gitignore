@@ -6,3 +6,4 @@ GUI_RTSP/node_modules
 node_modules
 GUI_RTSP/dist
 moonlight
+GUI/dist_1.0.3
