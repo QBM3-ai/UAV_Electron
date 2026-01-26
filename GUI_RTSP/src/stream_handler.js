@@ -1,4 +1,8 @@
 const { spawn } = require('child_process');
+const ffmpegPath = require('ffmpeg-static').replace(
+    'app.asar',
+    'app.asar.unpacked'
+);
 const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
@@ -47,7 +51,7 @@ class StreamHandler {
             '-' 
         ];
 
-        this.streamProcess = spawn('ffmpeg', args);
+        this.streamProcess = spawn(ffmpegPath, args);
         
         this.streamProcess.stdout.on('data', (data) => {
              // Check if wss is still valid and has clients
@@ -95,7 +99,7 @@ class StreamHandler {
              path.join(saveDir, 'frame_%08d.jpg')
         ];
 
-        this.captureProcess = spawn('ffmpeg', args);
+        this.captureProcess = spawn(ffmpegPath, args);
         this.captureProcess.stderr.on('data', (data) => {
              // Log capture errors
              console.log(`[FFmpeg Capture ${this.id}] ${data}`);
