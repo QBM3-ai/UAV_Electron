@@ -7,3 +7,6 @@ node_modules
 GUI_RTSP/dist
 moonlight
 GUI/dist_1.0.3
+xorg.conf
+xorg copy.conf
+GUI_RTSP/forwarded_captures

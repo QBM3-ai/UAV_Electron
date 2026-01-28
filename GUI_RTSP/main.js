@@ -70,7 +70,7 @@ ipcMain.handle('disconnect-stream', async (event, { id }) => {
     }
 });
 
-ipcMain.handle('start-capture', async (event, { id, url, baseDir }) => {
+ipcMain.handle('start-capture', async (event, { id, url, baseDir, fps }) => {
     try {
         // Path logic: baseDir/CH{id}/{timestamp}/
         // Beijing Time (UTC+8)
@@ -84,8 +84,8 @@ ipcMain.handle('start-capture', async (event, { id, url, baseDir }) => {
         const channelDir = path.join(baseDir, `CH${id}`);
         const sessionDir = path.join(channelDir, timestamp);
         
-        console.log(`[Main] Start Capture Channel ${id} to ${sessionDir}`);
-        await channels[id].startCapture(url, sessionDir);
+        console.log(`[Main] Start Capture Channel ${id} to ${sessionDir} (FPS: ${fps})`);
+        await channels[id].startCapture(url, sessionDir, fps);
         return { success: true, path: sessionDir };
     } catch (error) {
         console.error(`[Main] Error capturing channel ${id}:`, error);
@@ -96,6 +96,25 @@ ipcMain.handle('start-capture', async (event, { id, url, baseDir }) => {
 ipcMain.handle('stop-capture', async (event, { id }) => {
     try {
         await channels[id].stopCapture();
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+// Forwarding IPC
+ipcMain.handle('start-forward', async (event, { id, url, serverUrl }) => {
+    try {
+        await channels[id].startForwarding(url, serverUrl);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('stop-forward', async (event, { id, serverUrl }) => {
+    try {
+        await channels[id].stopForwarding(serverUrl);
         return { success: true };
     } catch (error) {
         return { success: false, error: error.message };

@@ -1,6 +1,6 @@
 {
   "name": "gui-rtsp-monitor",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Multi-channel RTSP Monitoring and Capture",
   "main": "main.js",
   "scripts": {

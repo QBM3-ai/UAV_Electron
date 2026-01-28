@@ -27,6 +27,10 @@ class StreamHandler {
         this.isUploading = false;
         this.watcher = null;
         
+        // Forwarding State
+        this.forwardProcess = null;
+        this.isForwarding = false;
+
         this.currentCaptureDir = null;
     }
 
@@ -63,7 +67,7 @@ class StreamHandler {
         });
         
         this.streamProcess.stderr.on('data', (data) => {
-            console.log(`[FFmpeg View ${this.id}] ${data}`);
+            // console.log(`[FFmpeg View ${this.id}] ${data}`);
         });
     }
 
@@ -78,8 +82,76 @@ class StreamHandler {
         }
     }
 
+    // --- Forwarding ---
+    async startForwarding(rtspUrl, serverUrl) {
+        if (this.isForwarding) return;
+
+        try {
+            // 1. Handshake w/ Python Server
+            // Assume serverUrl is base like http://ip:5000
+            // Remove trailing slash if any
+            const baseUrl = serverUrl.replace(/\/$/, "");
+            
+            console.log(`[CH${this.id}] Handshake with ${baseUrl}/start_capture`);
+            const res = await axios.post(`${baseUrl}/start_capture`, { channel_id: this.id });
+            
+            if (!res.data.success) {
+                throw new Error(res.data.error || 'Server rejected request');
+            }
+
+            const targetPort = res.data.port;
+            const urlObj = new URL(baseUrl);
+            const targetHost = urlObj.hostname;
+
+            console.log(`[CH${this.id}] Handshake OK. Forwarding to ${targetHost}:${targetPort}`);
+
+            // 2. Start FFmpeg
+            const isRtsp = rtspUrl.startsWith('rtsp');
+            const args = [
+                ...(isRtsp ? ['-rtsp_transport', 'tcp'] : []),
+                '-i', rtspUrl,
+                '-c', 'copy',
+                '-f', 'mpegts',
+                `tcp://${targetHost}:${targetPort}`
+            ];
+
+            this.forwardProcess = spawn(ffmpegPath, args);
+            this.isForwarding = true;
+
+            this.forwardProcess.stderr.on('data', (data) => {
+               console.log(`[Forward CH${this.id}] ${data}`);
+            });
+            
+            this.forwardProcess.on('close', (code) => {
+                console.log(`[Forward CH${this.id}] FFmpeg exited with code ${code}`);
+                this.isForwarding = false;
+                this.forwardProcess = null;
+            });
+
+        } catch (error) {
+            console.error(`[Forward CH${this.id}] Error:`, error.message);
+            throw error;
+        }
+    }
+
+    async stopForwarding(serverUrl) {
+        if (this.forwardProcess) {
+            this.forwardProcess.kill();
+            this.forwardProcess = null;
+        }
+        this.isForwarding = false;
+
+        // Notify server to stop saving
+        try {
+            const baseUrl = serverUrl.replace(/\/$/, "");
+            await axios.post(`${baseUrl}/stop_capture`, { channel_id: this.id });
+        } catch (error) {
+            console.warn(`[CH${this.id}] Failed to notify server stop:`, error.message);
+        }
+    }
+
     // --- Capture ---
-    async startCapture(rtspUrl, saveDir) {
+    async startCapture(rtspUrl, saveDir, fps = null) {
         if (!fs.existsSync(saveDir)) {
             fs.mkdirSync(saveDir, { recursive: true });
         }
@@ -95,9 +167,13 @@ class StreamHandler {
              ...(isRtsp ? ['-rtsp_transport', 'tcp'] : []),
              '-i', rtspUrl,
              '-f', 'image2',
-             // '-vf', 'fps=25', // Removed to capture all frames (source 15fps)
-             path.join(saveDir, 'frame_%08d.jpg')
         ];
+
+        if (fps) {
+            args.push('-vf', `fps=${fps}`);
+        }
+
+        args.push(path.join(saveDir, 'frame_%08d.jpg'));
 
         this.captureProcess = spawn(ffmpegPath, args);
         this.captureProcess.stderr.on('data', (data) => {
