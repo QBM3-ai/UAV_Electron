@@ -1,0 +1,55 @@
+{
+  "name": "gui-rtsp-monitor",
+  "version": "1.0.3",
+  "description": "Multi-channel RTSP Monitoring and Capture",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.rtspmonitor.app",
+    "productName": "RTSP Monitor",
+    "files": [
+      "**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "logo.png"
+    },
+    "linux": {
+      "target": "tar.gz",
+      "icon": "logo.png",
+      "category": "Video"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "keywords": [
+    "electron",
+    "rtsp",
+    "ffmpeg"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "ffmpeg-static": "^5.3.0",
+    "form-data": "^4.0.0",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "electron": "^29.1.0",
+    "electron-builder": "^26.4.0"
+  }
+}
