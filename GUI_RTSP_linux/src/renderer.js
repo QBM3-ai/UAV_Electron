@@ -1,9 +1,27 @@
 const { ipcRenderer } = require('electron');
+const path = require('path');
+const fs = require('fs');
 
 const players = {};
 const captureState = {};
 const frameCounters = {}; // Stores frame count per second
 const fpsIntervals = {};  // Stores interval IDs for updating FPS
+
+// --- Python Control Listener ---
+ipcRenderer.on('python-control', async (event, { command, data }) => {
+    console.log(`[Python Control] Received: ${command}`, data);
+    if (command === 'connect-all') {
+        connectAll();
+    } else if (command === 'capture-all') {
+        const fps = (data && data.fps) ? parseInt(data.fps) : null;
+        // Explicitly START capture (control logic usually implies 'do X')
+        // Using startCaptureAll ensures idempotency (if already captured, does nothing)
+        await startCaptureAll(fps);
+        ipcRenderer.send('python-capture-complete');
+    } else if (command === 'stop-capture-all') {
+        stopCaptureAll();
+    }
+});
 
 // --- Navigation ---
 const navBtns = document.querySelectorAll('.nav-btn');
@@ -21,7 +39,21 @@ navBtns.forEach(btn => {
 });
 
 // --- State ---
-let captureBaseDir = localStorage.getItem('captureBaseDir') || '';
+let captureBaseDir = localStorage.getItem('captureBaseDir');
+
+if (!captureBaseDir) {
+    // Default to 'captures' folder in current working directory
+    captureBaseDir = path.join(process.cwd(), 'captures');
+    // Ensure it exists
+    if (!fs.existsSync(captureBaseDir)) {
+        try {
+            fs.mkdirSync(captureBaseDir, { recursive: true });
+        } catch (e) {
+            console.error('Failed to create default capture directory:', e);
+        }
+    }
+}
+
 if (captureBaseDir) {
     document.getElementById('capture-path').value = captureBaseDir;
 }
@@ -212,7 +244,7 @@ async function connectAll() {
     }
 }
 
-async function captureAll() {
+async function captureAll(fpsOverride = null) {
     const allBtn = document.getElementById('btn-capture-all');
     let allCapturing = true;
 
@@ -224,27 +256,44 @@ async function captureAll() {
         }
     }
 
+    // Toggle Logic happens here only if called without explicit stop
+    // But since this function is 'captureAll', it generally toggles 'All' button state.
+    // However, for Python control, we might want explicit start.
+    // If Python calls captureAll, it lands here.
+    
+    // If not all are capturing, we start remaining.
+    // If all ARE capturing, we stop all.
+    
     if (allCapturing) {
-        // Stop all
-        for (let id = 1; id <= 4; id++) {
-            if (captureState[id]) {
-                await toggleCapture(id);
-            }
-        }
-        allBtn.textContent = "一键捕获所有";
-        allBtn.classList.remove('capturing'); // Optional style
+        await stopCaptureAll();
     } else {
-        // Start all
-        for (let id = 1; id <= 4; id++) {
-            if (!captureState[id]) {
-                await toggleCapture(id);
-                // Add a small delay to prevent resource contention
-                await new Promise(r => setTimeout(r, 150));
-            }
-        }
-        allBtn.textContent = "一键停止捕获";
-        allBtn.classList.add('capturing'); // Optional style
+        await startCaptureAll(fpsOverride);
     }
+}
+
+async function startCaptureAll(fpsOverride = null) {
+    const allBtn = document.getElementById('btn-capture-all');
+    for (let id = 1; id <= 4; id++) {
+        if (!captureState[id]) {
+            await toggleCapture(id, fpsOverride);
+            await new Promise(r => setTimeout(r, 150));
+        }
+    }
+    allBtn.textContent = "一键停止捕获";
+    allBtn.classList.add('capturing');
+    allBtn.style.backgroundColor = "#F44336"; 
+}
+
+async function stopCaptureAll() {
+    const allBtn = document.getElementById('btn-capture-all');
+    for (let id = 1; id <= 4; id++) {
+        if (captureState[id]) {
+            await toggleCapture(id);
+        }
+    }
+    allBtn.textContent = "一键捕获所有";
+    allBtn.classList.remove('capturing');
+    allBtn.style.backgroundColor = "#FF9800";
 }
 
 async function toggleConnect(id) {
@@ -320,7 +369,7 @@ async function toggleConnect(id) {
     }
 }
 
-async function toggleCapture(id) {
+async function toggleCapture(id, fpsOverride = null) {
     const btn = document.querySelector(`#panel-${id} .btn-capture`);
     const input = document.querySelector(`#panel-${id} .rtsp-input`); 
     const url = input.value;
@@ -338,11 +387,26 @@ async function toggleCapture(id) {
         if (!url) return alert('请输入RTSP地址 (Please enter RTSP URL)');
         if (!captureBaseDir) return alert('请先选择保存路径 (Please select save path first)');
         
-        // Get FPS setting
-        let fps = null;
-        if (document.querySelector('input[name="capture-fps"][value="custom"]').checked) {
-            const val = document.getElementById('custom-fps-input').value;
-            fps = val ? parseInt(val) : null;
+        // Get FPS setting (Override > UI)
+        let fps = fpsOverride;
+        if (fps === null) {
+            if (document.querySelector('input[name="capture-fps"][value="custom"]').checked) {
+                const val = document.getElementById('custom-fps-input').value;
+                fps = val ? parseInt(val) : null;
+            }
+        } else {
+             // Sync UI or just use parameter
+             // Try sync UI for visual feedback
+             try {
+                 const radio = document.querySelector('input[name="capture-fps"][value="custom"]');
+                 const fpsInput = document.getElementById('custom-fps-input');
+                 if(radio && fpsInput) {
+                     radio.checked = true;
+                     fpsInput.disabled = false;
+                     fpsInput.value = fps;
+                 }
+             } catch(e) {}
+             fps = parseInt(fps);
         }
 
         btn.textContent = 'Init...';

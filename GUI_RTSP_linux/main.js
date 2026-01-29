@@ -79,7 +79,8 @@ ipcMain.handle('start-capture', async (event, { id, url, baseDir, fps }) => {
         const bjDate = new Date(utc + (3600000 * 8));
         
         const pad = (n) => n.toString().padStart(2, '0');
-        const timestamp = `${bjDate.getFullYear()}-${pad(bjDate.getMonth() + 1)}-${pad(bjDate.getDate())}_${pad(bjDate.getHours())}-${pad(bjDate.getMinutes())}-${pad(bjDate.getSeconds())}`;
+        // Removed seconds from timestamp as requested
+        const timestamp = `${bjDate.getFullYear()}-${pad(bjDate.getMonth() + 1)}-${pad(bjDate.getDate())}_${pad(bjDate.getHours())}-${pad(bjDate.getMinutes())}`;
         
         const channelDir = path.join(baseDir, `CH${id}`);
         const sessionDir = path.join(channelDir, timestamp);
@@ -132,4 +133,73 @@ ipcMain.handle('update-upload-config', (event, { id, enabled, uploadUrl }) => {
         channels[id].setUploadConfig(enabled, uploadUrl);
     }
     return { success: true };
+});
+
+// --- Python Control Server ---
+const http = require('http');
+const CONTROL_PORT = 12345;
+
+const server = http.createServer((req, res) => {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const pathname = url.pathname;
+    const searchParams = url.searchParams;
+
+    if (req.method === 'POST' || req.method === 'GET') {
+        if (pathname === '/connect') {
+            const wins = BrowserWindow.getAllWindows();
+            wins.forEach(w => w.webContents.send('python-control', { command: 'connect-all' }));
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, message: 'Connect signal sent' }));
+        } else if (pathname === '/capture') {
+            const fps = searchParams.get('fps');
+            const wins = BrowserWindow.getAllWindows();
+            
+            // Wait for Renderer to finish starting captures
+            ipcMain.once('python-capture-complete', () => {
+                const paths = {};
+                for (let i = 1; i <= 4; i++) {
+                    if (channels[i] && channels[i].currentCaptureDir) {
+                        paths[i] = channels[i].currentCaptureDir;
+                    } else {
+                        paths[i] = null;
+                    }
+                }
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                    success: true, 
+                    message: 'Capture started', 
+                    fps,
+                    paths: paths
+                }));
+            });
+
+            // Send signal
+            wins.forEach(w => w.webContents.send('python-control', { command: 'capture-all', data: { fps } }));
+            
+            // Fallback timeout (optional but good practice)
+            setTimeout(() => {
+                if (!res.writableEnded) {
+                    res.writeHead(500);
+                    res.end(JSON.stringify({ success: false, error: 'Timeout waiting for renderer' }));
+                }
+            }, 10000);
+
+        } else if (pathname === '/stop_capture') {
+            const wins = BrowserWindow.getAllWindows();
+            wins.forEach(w => w.webContents.send('python-control', { command: 'stop-capture-all' }));
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, message: 'Stop capture signal sent' }));
+        } else {
+            res.writeHead(404);
+            res.end('Not Found');
+        }
+    } else {
+        res.writeHead(405);
+        res.end('Method Not Allowed');
+    }
+});
+
+server.listen(CONTROL_PORT, () => {
+    console.log(`[Main] Control Server listening on port ${CONTROL_PORT}`);
 });
