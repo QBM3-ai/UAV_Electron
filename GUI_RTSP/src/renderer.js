@@ -7,6 +7,30 @@ const captureState = {};
 const frameCounters = {}; // Stores frame count per second
 const fpsIntervals = {};  // Stores interval IDs for updating FPS
 
+// --- Toast Notification ---
+function showToast(message, duration = 3000) {
+    // Remove existing toast if any
+    const existingToast = document.querySelector('.toast-notification');
+    if (existingToast) {
+        existingToast.remove();
+    }
+    
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    // Trigger animation
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // Remove after duration
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
 // --- Python Control Listener ---
 ipcRenderer.on('python-control', async (event, { command, data }) => {
     console.log(`[Python Control] Received: ${command}`, data);
@@ -20,6 +44,37 @@ ipcRenderer.on('python-control', async (event, { command, data }) => {
         ipcRenderer.send('python-capture-complete');
     } else if (command === 'stop-capture-all') {
         stopCaptureAll();
+    } else if (command === 'capture-single-frame') {
+        // Start single frame capture and wait for completion
+        await captureSingleFrameForPython();
+    } else if (command === 'set-capture-path') {
+        // Update capture path from Python control
+        const newPath = data.path;
+        if (newPath) {
+            captureBaseDir = newPath;
+            localStorage.setItem('captureBaseDir', newPath);
+            document.getElementById('capture-path').value = newPath;
+            console.log(`[Python Control] Capture path updated to: ${newPath}`);
+        }
+    } else if (command === 'get-capture-path') {
+        // Send current capture path back to main process
+        ipcRenderer.send('python-path-response', captureBaseDir || '');
+    } else if (command === 'set-timestamp-folder') {
+        // Update timestamp folder setting from Python control
+        const noTimestamp = data.noTimestamp;
+        if (typeof noTimestamp === 'boolean') {
+            const checkbox = document.getElementById('no-timestamp-folder');
+            if (checkbox) {
+                checkbox.checked = noTimestamp;
+                localStorage.setItem('noTimestampFolder', noTimestamp);
+                updateCapturePathHint(noTimestamp);
+                console.log(`[Python Control] Timestamp folder setting updated: noTimestamp=${noTimestamp}`);
+            }
+        }
+    } else if (command === 'get-timestamp-folder') {
+        // Send current timestamp folder setting back to main process
+        const noTimestamp = document.getElementById('no-timestamp-folder')?.checked || false;
+        ipcRenderer.send('python-timestamp-response', noTimestamp);
     }
 });
 
@@ -56,6 +111,29 @@ if (!captureBaseDir) {
 
 if (captureBaseDir) {
     document.getElementById('capture-path').value = captureBaseDir;
+}
+
+// Memory: Restore no-timestamp-folder option
+const noTimestampFolder = localStorage.getItem('noTimestampFolder') === 'true';
+if (noTimestampFolder) {
+    document.getElementById('no-timestamp-folder').checked = true;
+    updateCapturePathHint(true);
+}
+
+// Listen to checkbox change
+document.getElementById('no-timestamp-folder').addEventListener('change', (e) => {
+    const checked = e.target.checked;
+    localStorage.setItem('noTimestampFolder', checked);
+    updateCapturePathHint(checked);
+});
+
+function updateCapturePathHint(noTimestamp) {
+    const hint = document.getElementById('capture-path-hint');
+    if (noTimestamp) {
+        hint.textContent = '捕获文件将直接保存在所选文件夹内，不创建时间戳子文件夹。';
+    } else {
+        hint.textContent = '将在该目录下创建时间戳文件夹，每次捕获的文件保存在对应的时间戳文件夹内。';
+    }
 }
 
 // Memory: Restore RTSP addresses
@@ -276,7 +354,7 @@ async function startCaptureAll(fpsOverride = null) {
     for (let id = 1; id <= 4; id++) {
         if (!captureState[id]) {
             await toggleCapture(id, fpsOverride);
-            await new Promise(r => setTimeout(r, 150));
+            await new Promise(r => setTimeout(r, 200));
         }
     }
     allBtn.textContent = "一键停止捕获";
@@ -294,6 +372,145 @@ async function stopCaptureAll() {
     allBtn.textContent = "一键捕获所有";
     allBtn.classList.remove('capturing');
     allBtn.style.backgroundColor = "#FF9800";
+}
+
+// --- Single Frame Capture ---
+let singleFrameMonitoring = false;
+
+async function captureSingleFrame() {
+    const btn = document.getElementById('btn-single-frame');
+    
+    if (singleFrameMonitoring) {
+        // Already in progress, ignore
+        return;
+    }
+    
+    if (!captureBaseDir) {
+        return alert('请先选择保存路径 (Please select save path first)');
+    }
+    
+    singleFrameMonitoring = true;
+    btn.disabled = true;
+    btn.textContent = '捕获中...';
+    btn.style.backgroundColor = '#9E9E9E';
+    
+    try {
+        // Start monitoring for first frame
+        const monitorResult = await ipcRenderer.invoke('start-single-frame-monitor', { captureDir: captureBaseDir });
+        
+        if (!monitorResult.success) {
+            // 0-numbered frames already exist
+            singleFrameMonitoring = false;
+            btn.disabled = false;
+            btn.textContent = '一键单帧捕获';
+            btn.style.backgroundColor = '#4CAF50';
+            showToast('❌ ' + monitorResult.error, 5000);
+            return;
+        }
+        
+        // Start capturing all channels at 3 FPS
+        for (let id = 1; id <= 4; id++) {
+            if (!captureState[id]) {
+                await toggleCapture(id, 3);  // 3 FPS for single frame capture
+                await new Promise(r => setTimeout(r, 200));
+            }
+        }
+        
+        console.log('[Single Frame] Capture started at 3 FPS, waiting for first frame from all channels...');
+        
+    } catch (error) {
+        console.error('[Single Frame] Error:', error);
+        alert('单帧捕获失败: ' + error.message);
+        singleFrameMonitoring = false;
+        btn.disabled = false;
+        btn.textContent = '一键单帧捕获';
+        btn.style.backgroundColor = '#4CAF50';
+    }
+}
+
+// Listen for single frame capture completion
+ipcRenderer.on('single-frame-complete', async (event, framePaths) => {
+    console.log('[Single Frame] All channels captured first frame, stopping...');
+    
+    // Stop all captures
+    for (let id = 1; id <= 4; id++) {
+        if (captureState[id]) {
+            await toggleCapture(id);
+        }
+    }
+    
+    // Reset button
+    const btn = document.getElementById('btn-single-frame');
+    btn.disabled = false;
+    btn.textContent = '一键单帧捕获';
+    btn.style.backgroundColor = '#4CAF50';
+    singleFrameMonitoring = false;
+    
+    showToast('✅ 单帧捕获完成！所有通道已保存第一帧。');
+});
+
+// Python control version - no UI updates, just return paths
+async function captureSingleFrameForPython() {
+    if (singleFrameMonitoring) {
+        console.log('[Python Single Frame] Already in progress');
+        return;
+    }
+    
+    if (!captureBaseDir) {
+        ipcRenderer.send('python-single-frame-complete', {});
+        return;
+    }
+    
+    singleFrameMonitoring = true;
+    
+    try {
+        // Setup listener for completion
+        ipcRenderer.once('single-frame-complete', async (event, framePaths) => {
+            console.log('[Python Single Frame] All channels captured first frame, stopping...');
+            console.log('[Python Single Frame] Received frame paths:', framePaths);
+            
+            // Stop all captures
+            for (let id = 1; id <= 4; id++) {
+                if (captureState[id]) {
+                    await toggleCapture(id);
+                }
+            }
+            
+            singleFrameMonitoring = false;
+            
+            console.log('[Python Single Frame] Returning frame paths to Python:', framePaths);
+            ipcRenderer.send('python-single-frame-complete', framePaths || {});
+        });
+        
+        // Start monitoring for first frame
+        const monitorResult = await ipcRenderer.invoke('start-single-frame-monitor', { captureDir: captureBaseDir });
+        
+        if (!monitorResult.success) {
+            // 0-numbered frames already exist
+            singleFrameMonitoring = false;
+            console.log('[Python Single Frame] Error:', monitorResult.error);
+            ipcRenderer.send('python-single-frame-complete', {
+                error: monitorResult.error,
+                existingChannels: monitorResult.existingChannels
+            });
+            return;
+        }
+        
+        // Start capturing all channels at 3 FPS
+        for (let id = 1; id <= 4; id++) {
+            if (!captureState[id]) {
+                await toggleCapture(id, 3);  // 3 FPS for single frame capture
+                await new Promise(r => setTimeout(r, 200));
+            }
+        }
+        
+        console.log('[Python Single Frame] Capture started at 3 FPS, waiting for first frame from all channels...');
+        
+    } catch (error) {
+        console.error('[Python Single Frame] Error:', error);
+        singleFrameMonitoring = false;
+        ipcRenderer.send('python-single-frame-complete', {});
+    }
 }
 
 async function toggleConnect(id) {
@@ -410,7 +627,8 @@ async function toggleCapture(id, fpsOverride = null) {
         }
 
         btn.textContent = 'Init...';
-        const res = await ipcRenderer.invoke('start-capture', { id, url, baseDir: captureBaseDir, fps });
+        const noTimestampFolder = document.getElementById('no-timestamp-folder').checked;
+        const res = await ipcRenderer.invoke('start-capture', { id, url, baseDir: captureBaseDir, fps, noTimestampFolder });
         if (res.success) {
             captureState[id] = true;
             btn.classList.add('capturing');

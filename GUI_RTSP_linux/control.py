@@ -112,12 +112,12 @@ def capture_single_frame():
 # 等待连接稳定
 #time.sleep(2)
 
-# 2. 设置捕获保存路径
+# 2. 设置捕获保存路径 (Set Capture Path)
 #result = set_capture_path("D:\\123\\123")
 #if result.get('success'):
 #    print(f"Capture path set to: {result.get('path')}")
 
-# 3. 获取当前保存路径
+# 3. 获取当前保存路径 (Get Capture Path)
 #result = get_capture_path()
 #if result.get('success'):
 #    print(f"Current capture path: {result.get('path')}")
@@ -128,19 +128,19 @@ def capture_single_frame():
 #if result.get('success'):
 #    print(f"Timestamp folder setting updated")
 
-# 5. 获取当前时间戳文件夹设置
+# 5. 获取当前时间戳文件夹设置 (Get Timestamp Folder)
 #result = get_timestamp_folder()
 #if result.get('success'):
 #    enabled = result.get('enabled')
 #    print(f"Create timestamp folder: {enabled}")
 
-# 6. 一键捕获- 使用默认设置
+# 6. 一键捕获 (Connect All - Start Capture) - 使用默认设置
 #control_electron("capture")
 
-# 7. 一键捕获 - 强制指定 FPS 为 5
+# 或者 7. 一键捕获 - 强制指定 FPS 为 5
 #control_electron("capture", fps=5)
 
-# 8. 一键单帧捕获，并获取文件位置，如果路径内已有0编号帧，则返回错误信息，需清理后继续
+# 8. 一键单帧捕获，并获取文件位置
 #result = capture_single_frame()
 #if result.get('success'):
 #    frames = result.get('frames', {})
@@ -148,6 +148,12 @@ def capture_single_frame():
 #    for ch_id, frame_path in frames.items():
 #        print(f"  Channel {ch_id}: {frame_path}")
 
-# 9. 停止捕获
+# 9. 停止捕获 (Stop Capture)
 #control_electron("stop_capture")
 
+result = capture_single_frame()
+if result.get('success'):
+    frames = result.get('frames', {})
+    print("Single frame captured:")
+    for ch_id, frame_path in frames.items():
+        print(f"  Channel {ch_id}: {frame_path}")

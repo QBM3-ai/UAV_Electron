@@ -161,25 +161,84 @@ class StreamHandler {
 
         this.startWatcher(saveDir);
 
-        // Match capture FPS logic
+        // Calculate start number based on Channel ID (e.g. 10000000)
+        const startNum = this.id * 10000000;
+        
+        // --- 1. Create Timestamp Log File ---
+        const logPath = path.join(saveDir, `timestamps_CH${this.id}.txt`);
+        const logStream = fs.createWriteStream(logPath, { flags: 'a' });
+        // Header
+        logStream.write("Filename,PTS_Time,System_Time\n");
+
         const isRtsp = rtspUrl.startsWith('rtsp');
+        
+        // --- 2. Build FFmpeg Command ---
+        // Add 'showinfo' filter to get frame metadata in stderr
+        const vfFilters = [];
+        if (fps) {
+            vfFilters.push(`fps=${fps}`);
+        }
+        vfFilters.push('showinfo'); // This prints "n:.. pts_time:..." lines
+
         const args = [
              ...(isRtsp ? ['-rtsp_transport', 'tcp'] : []),
              '-i', rtspUrl,
              '-f', 'image2',
+             '-vf', vfFilters.join(','), // Combine filters
+             '-start_number', startNum.toString(),
+             path.join(saveDir, 'frame_%08d.jpg')
         ];
 
-        if (fps) {
-            args.push('-vf', `fps=${fps}`);
-        }
-
-        args.push(path.join(saveDir, 'frame_%08d.jpg'));
-
         this.captureProcess = spawn(ffmpegPath, args);
+
+        // --- 3. Parse Metadata & Log ---
+        let currentFrameIndex = 0;
+        let firstPts = null;
+        let referenceTime = 0;
+        
         this.captureProcess.stderr.on('data', (data) => {
-             // Log capture errors
-             console.log(`[FFmpeg Capture ${this.id}] ${data}`);
+             const output = data.toString();
+             // console.log(`[FFmpeg Capture ${this.id}] ${output}`);
+
+             // Parse showinfo lines
+             // e.g. "n:   0 pts: 12345 pts_time:0.040000 ..."
+             const lines = output.split('\n');
+             lines.forEach(line => {
+                if (line.includes('pts_time:')) {
+                    const match = line.match(/pts_time:([\d\.]+)/);
+                    if (match) {
+                        const ptsTime = parseFloat(match[1]);
+                        
+                        // Initialize reference time on first frame
+                        if (firstPts === null) {
+                            firstPts = ptsTime;
+                            referenceTime = Date.now();
+                        }
+                        
+                        const frameNum = startNum + currentFrameIndex;
+                        const filename = `frame_${frameNum}.jpg`;
+                        
+                        // Calculate time based on PTS delta to smooth out buffering jitter
+                        // PTS is in seconds
+                        const timeOffset = (ptsTime - firstPts) * 1000;
+                        const currentFrameTime = referenceTime + timeOffset;
+                        
+                        // Beijing Time (UTC+8)
+                        const bjOffset = 8 * 60 * 60 * 1000;
+                        const bjDate = new Date(currentFrameTime + bjOffset);
+                        const sysTime = bjDate.toISOString().replace('T', ' ').replace('Z', '');
+
+                        logStream.write(`${filename},${ptsTime},${sysTime}\n`);
+                        currentFrameIndex++;
+                    }
+                }
+             });
         }); 
+
+        // Handle stream close to close file
+        this.captureProcess.on('close', () => {
+             if (logStream) logStream.end();
+        });
     }
 
     async stopCapture() {

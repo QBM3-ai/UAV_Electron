@@ -19,6 +19,7 @@
                 <span style="font-weight: bold; margin-right: 10px;">全局控制:</span>
                 <button id="btn-connect-all" class="btn-primary" onclick="connectAll()" style="background-color: #007acc;">一键连接所有</button>
                 <button id="btn-capture-all" class="btn-primary" onclick="captureAll()" style="background-color: #FF9800;">一键捕获所有</button>
+                <button id="btn-single-frame" class="btn-primary" onclick="captureSingleFrame()" style="background-color: #4CAF50;">一键单帧捕获</button>
             </div>
             <div class="grid-container">
                 <!-- Channel 1 -->
@@ -100,8 +101,13 @@
                             <input type="text" id="capture-path" readonly placeholder="请选择保存路径...">
                             <button class="btn-primary" onclick="selectFolder()">选择文件夹</button>
                         </div>
-                        <p style="color: #666; font-size: 12px; margin-top: 5px;">
-                            将在该目录下创建 "CH1" - "CH4" 文件夹。每次捕获将在对应通道内创建时间戳文件夹。
+                        <div style="margin-top: 10px;">
+                            <label class="checkbox-group">
+                                <input type="checkbox" id="no-timestamp-folder"> 不创建时间戳文件夹
+                            </label>
+                        </div>
+                        <p style="color: #666; font-size: 12px; margin-top: 5px;" id="capture-path-hint">
+                            勾选后将直接保存在所选文件夹内
                         </p>
                     </div>
 
